@@ -1,0 +1,147 @@
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Safelist;
+import org.jsoup.select.Elements;
+
+// This class fetches the content of web novel chapters and saves them locally as HTML files.
+public class Main {
+
+  public static void main(String[] args) {
+    // Start with the first chapter of a given novel
+    String startUrl =
+      "https://freewebnovel.com/lord-of-the-mysteries/chapter-1.html";
+
+    //String startUrl = "https://www.lightnovelpub.com/novel/the-beginning-after-the-end-548/chapter-1-61112";
+    //String startUrl = "https://novelbin.net/n/reverend-insanity/chapter-1";
+    //String startUrl = "https://comrademao.com/mtl/top-tier-providence-secretly-cultivate-for-a-thousand-years/top-tier-providence-secretly-cultivate-for-a-thousand-years-chapter-1/";
+
+    // Define how many chapters to scrape
+    int numChapters = 10;
+    // Initialize the URL of the next chapter
+    String nextChapterUrl = startUrl;
+
+    // Output the URL of the first chapter
+    System.out.println("Chapter 1 URL: " + startUrl);
+
+    // Loop through the number of chapters defined earlier
+    for (int i = 1; i <= numChapters; i++) {
+      try {
+        // Fetch the HTML content of the current chapter
+        Document doc = Jsoup.connect(nextChapterUrl).userAgent("Chrome").get();
+        // Define the name and location of the file where the HTML content will be saved
+        String fileName = "output/chapter" + i + ".html";
+        File file = new File(fileName);
+        FileWriter fw = new FileWriter(file);
+        BufferedWriter bw = new BufferedWriter(fw);
+        // Write the HTML content to the file
+        bw.write(doc.html());
+        bw.close();
+        fw.close();
+        // Output the name and location of the saved file
+        System.out.println(
+          "Chapter " + i + " HTML content saved to file: " + fileName
+        );
+
+        // Find the URL of the next chapter by searching for the link with the text "Next Chapter" or "Next"
+        Elements links = doc.select("a[href]");
+        for (Element link : links) {
+          if (
+            link.text().contains("Next Chapter") || link.text().contains("Next")
+          ) {
+            nextChapterUrl = link.attr("abs:href");
+            // Output the URL of the next chapter
+            System.out.println(
+              "Chapter " + (i + 1) + " URL: " + nextChapterUrl
+            );
+            break;
+          }
+        }
+
+        // Wait for 5 seconds before fetching the next chapter
+        try {
+          Thread.sleep(5000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
+    }
+
+    // Set the input and output folder names
+    String inputFolderName = "output";
+    String outputFolderName = "cleaned_output";
+
+    // Create the output folder if it doesn't already exist
+    File outputFolder = new File(outputFolderName);
+    if (!outputFolder.exists()) {
+      outputFolder.mkdir();
+    }
+
+    // Set up the allowed HTML tags for the Cleaner
+    Safelist safelist = Safelist.basicWithImages();
+    safelist.addTags(
+      "p, b, strong, i, em, mark, small, del, ins, sub, sup, h1, h2, h3, h4, h5, h6"
+    );
+
+    // Get a list of input files from the input folder
+    File inputFolder = new File(inputFolderName);
+    File[] inputFiles = inputFolder.listFiles();
+
+    // Loop through each input file and clean its HTML
+    for (File inputFile : inputFiles) {
+      // Parse the input HTML file using Jsoup
+      Document doc;
+      try {
+        doc = Jsoup.parse(inputFile, "UTF-8");
+      } catch (IOException e) {
+        e.printStackTrace();
+        continue;
+      }
+
+      // Remove the header and footer elements
+      Element headerElement = doc.selectFirst("header");
+      if (headerElement != null) {
+        headerElement.remove();
+      }
+      Element footerElement = doc.selectFirst("footer");
+      if (footerElement != null) {
+        footerElement.remove();
+      }
+
+      // Remove any elements that we don't want to keep
+      doc
+        .select(
+          "head, script, noscript, span, style, class, a, ol, ul, dd, dl, li, br"
+        )
+        .remove();
+
+      // Use the Cleaner to clean the HTML using the allowed tags
+      Cleaner cleaner = new Cleaner(safelist);
+      Document cleanedDoc = cleaner.clean(doc);
+
+      // Write the cleaned HTML to a new file in the output folder
+      String outputFileName = inputFile.getName();
+      File outputFile = new File(outputFolderName + "/" + outputFileName);
+      try {
+        FileWriter writer = new FileWriter(outputFile);
+        writer.write(cleanedDoc.toString());
+        writer.close();
+      } catch (IOException e) {
+        e.printStackTrace();
+        continue;
+      }
+
+      // Print a message to indicate that the HTML file was successfully cleaned
+      System.out.println(
+        "HTML file " + inputFile.getName() + " successfully cleaned."
+      );
+    }
+  }
+}
