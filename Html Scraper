@@ -1,0 +1,54 @@
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+public class Main {
+    public static void main(String[] args) {
+        String startUrl = "https://freewebnovel.com/lord-of-the-mysteries/chapter-1.html";
+        int numChapters = 10;
+        String nextChapterUrl = startUrl;
+
+        System.out.println("Chapter 1 URL: " + startUrl);
+
+        for (int i = 1; i <= numChapters; i++) {
+            try {
+                Document doc = Jsoup.connect(nextChapterUrl)
+                        .userAgent("Chrome")
+                        .get();
+                String fileName = "output/chapter" + i + ".html";
+                File file = new File(fileName);
+                FileWriter fw = new FileWriter(file);
+                BufferedWriter bw = new BufferedWriter(fw);
+                bw.write(doc.html());
+                bw.close();
+                fw.close();
+                System.out.println("Chapter " + i + " HTML content saved to file: " + fileName);
+
+                Elements links = doc.select("a[href]");
+                for (Element link : links) {
+                    if (link.text().contains("Next Chapter") || link.text().contains("Next")) {
+                        nextChapterUrl = link.attr("abs:href");
+                        System.out.println("Chapter " + (i+1) + " URL: " + nextChapterUrl);
+                        break;
+                    }
+
+                }
+
+                // Sleep for 5 seconds before sending the next request
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+              
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
