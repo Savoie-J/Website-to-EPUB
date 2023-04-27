@@ -1,0 +1,54 @@
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.safety.Cleaner;
+import org.jsoup.safety.Safelist;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+public class Main {
+
+  public static void main(String[] args) {
+    String inputFileName = "input.html"; // Replace with the name of your input file
+    String outputFileName = "output.html"; // Replace with the name of your output file
+
+    try {
+      // Load the input file into a Jsoup Document object
+      File inputFile = new File(inputFileName);
+      Document doc = Jsoup.parse(inputFile, "UTF-8");
+
+      // Create a Safelist that only allows <p> tags and removes any attributes they may have
+      Safelist safelist = Safelist.basicWithImages();
+      safelist.addTags("p, b, strong, i, em, mark, small, del, ins, sub, sup, h1, h2, h3, h4, h5, h6");
+
+      // Remove the header and footer elements
+      Element headerElement = doc.selectFirst("header");
+      if (headerElement != null) {
+          headerElement.remove();
+      }
+      Element footerElement = doc.selectFirst("footer");
+      if (footerElement != null) {
+          footerElement.remove();
+      }
+      
+      doc.select("head, script, noscript, span, style, class, a, ol, ul, dd, dl, li, br").remove();
+    
+      // Use the Cleaner class to remove all elements except for <p> tags and their content
+      Cleaner cleaner = new Cleaner(safelist);
+      Document cleanedDoc = cleaner.clean(doc);
+
+      // Write the cleaned HTML to the output file
+      FileWriter writer = new FileWriter(outputFileName);
+      writer.write(cleanedDoc.toString());
+      writer.close();
+
+      System.out.println("HTML file successfully cleaned.");
+    } 
+    catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+}
